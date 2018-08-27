@@ -12,7 +12,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/superRaytin/paginationjs"
+    "url": "https://github.com/al-wys/paginationjs"
   },
   "keywords": [
     "paginationjs",
@@ -24,7 +24,7 @@
   "author": "superRaytin",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/superRaytin/paginationjs/issues"
+    "url": "https://github.com/al-wys/paginationjs/issues"
   },
   "homepage": "http://pagination.js.org",
   "devDependencies": {

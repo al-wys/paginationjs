@@ -9,7 +9,7 @@
  * Released under the MIT license.
  */
 
-(function(global, $) {
+(function (global, $) {
 
   if (typeof $ === 'undefined') {
     throwError('Pagination requires jQuery.');
@@ -26,7 +26,7 @@
     pluginName = 'pagination2';
   }
 
-  $.fn[pluginName] = function(options) {
+  $.fn[pluginName] = function (options) {
 
     if (typeof options === 'undefined') {
       return this;
@@ -38,7 +38,7 @@
 
     var pagination = {
 
-      initialize: function() {
+      initialize: function () {
         var self = this;
 
         // Cache attributes of current instance
@@ -63,11 +63,11 @@
         };
 
         // dataSource`s type is unknown, parse it to find true data
-        self.parseDataSource(attributes.dataSource, function(dataSource) {
+        self.parseDataSource(attributes.dataSource, function (dataSource) {
 
           // Currently in asynchronous mode
-          self.isAsync = Helpers.isString(dataSource);
-          if (Helpers.isArray(dataSource)) {
+          self.isAsync = attributes.isAsync || Helpers.isString(dataSource); // Try to get 'isAsync' from attributes first
+          if (!self.isAsync && Helpers.isArray(dataSource)) {
             model.totalNumber = attributes.totalNumber = dataSource.length;
           }
 
@@ -82,7 +82,7 @@
           var el = self.render(true);
 
           // Add extra className to the pagination element
-            if (attributes.className) {
+          if (attributes.className) {
             el.addClass(attributes.className);
           }
 
@@ -102,7 +102,7 @@
         });
       },
 
-      render: function(isBoot) {
+      render: function (isBoot) {
         var self = this;
         var model = self.model;
         var el = model.el || $('<div class="paginationjs"></div>');
@@ -141,7 +141,7 @@
       },
 
       // Generate HTML content from the template
-        generateHTML: function(args) {
+      generateHTML: function (args) {
         var self = this;
         var currentPage = args.currentPage;
         var totalPage = self.getTotalPage();
@@ -318,13 +318,13 @@
 
       // Find totalNumber from the remote response
       // Only available in asynchronous mode
-      findTotalNumberFromRemoteResponse: function(response) {
+      findTotalNumberFromRemoteResponse: function (response) {
         var self = this;
         self.model.totalNumber = attributes.totalNumberLocator(response);
       },
 
       // Go to the specified page
-      go: function(number, callback) {
+      go: function (number, callback) {
         var self = this;
         var model = self.model;
 
@@ -351,41 +351,49 @@
           return;
         }
 
-        var postData = {};
-        var alias = attributes.alias || {};
-        postData[alias.pageSize ? alias.pageSize : 'pageSize'] = pageSize;
-        postData[alias.pageNumber ? alias.pageNumber : 'pageNumber'] = pageNumber;
-
-        var ajaxParams = $.isFunction(attributes.ajax) ? attributes.ajax() : {};
-        var formatAjaxParams = {
-          type: 'get',
-          cache: false,
-          data: {},
-          contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
-          dataType: 'json',
-          async: true
-        };
-
-        $.extend(true, formatAjaxParams, ajaxParams);
-        $.extend(formatAjaxParams.data, postData);
-
-        formatAjaxParams.url = attributes.dataSource;
-        formatAjaxParams.success = function(response) {
+        function getDataSuccess(response) {
           if (self.isDynamicTotalNumber) {
             self.findTotalNumberFromRemoteResponse(response);
           } else {
             self.model.totalNumber = attributes.totalNumber;
           }
           render(self.filterDataByLocator(response));
-        };
-        formatAjaxParams.error = function(jqXHR, textStatus, errorThrown) {
-          attributes.formatAjaxError && attributes.formatAjaxError(jqXHR, textStatus, errorThrown);
-          self.enable();
-        };
+        }
 
-        self.disable();
+        if ($.isFunction(attributes.dataSource)) {
+          attributes.dataSource(pageNumber, pageSize, getDataSuccess); // Call the dataSource function to get data, just like ajax calling
+        } else if (Helpers.isString(attributes.dataSource)) {
+          // Start to get data via ajax
+          var postData = {};
+          var alias = attributes.alias || {};
+          postData[alias.pageSize ? alias.pageSize : 'pageSize'] = pageSize;
+          postData[alias.pageNumber ? alias.pageNumber : 'pageNumber'] = pageNumber;
 
-        $.ajax(formatAjaxParams);
+          var ajaxParams = $.isFunction(attributes.ajax) ? attributes.ajax() : {};
+          var formatAjaxParams = {
+            type: 'get',
+            cache: false,
+            data: {},
+            contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
+            dataType: 'json',
+            async: true
+          };
+
+          $.extend(true, formatAjaxParams, ajaxParams);
+          $.extend(formatAjaxParams.data, postData);
+
+          formatAjaxParams.url = attributes.dataSource;
+          formatAjaxParams.success = getDataSuccess;
+          formatAjaxParams.error = function (jqXHR, textStatus, errorThrown) {
+            attributes.formatAjaxError && attributes.formatAjaxError(jqXHR, textStatus, errorThrown);
+            self.enable();
+          };
+
+          self.disable();
+
+          $.ajax(formatAjaxParams);
+          // End
+        }
 
         function render(data) {
           // Will be invoked before paging
@@ -433,7 +441,7 @@
         }
       },
 
-      doCallback: function(data, customCallback) {
+      doCallback: function (data, customCallback) {
         var self = this;
         var model = self.model;
 
@@ -444,7 +452,7 @@
         }
       },
 
-      destroy: function() {
+      destroy: function () {
         // Before destroy
         if (this.callHook('beforeDestroy') === false) return;
 
@@ -458,15 +466,15 @@
         this.callHook('afterDestroy');
       },
 
-      previous: function(callback) {
+      previous: function (callback) {
         this.go(this.model.pageNumber - 1, callback);
       },
 
-      next: function(callback) {
+      next: function (callback) {
         this.go(this.model.pageNumber + 1, callback);
       },
 
-      disable: function() {
+      disable: function () {
         var self = this;
         var source = self.isAsync ? 'async' : 'sync';
 
@@ -480,7 +488,7 @@
         self.callHook('afterDisable', source);
       },
 
-      enable: function() {
+      enable: function () {
         var self = this;
         var source = self.isAsync ? 'async' : 'sync';
 
@@ -494,11 +502,11 @@
         self.callHook('afterEnable', source);
       },
 
-      refresh: function(callback) {
+      refresh: function (callback) {
         this.go(this.model.pageNumber, callback);
       },
 
-      show: function() {
+      show: function () {
         var self = this;
 
         if (self.model.el.is(':visible')) return;
@@ -506,7 +514,7 @@
         self.model.el.show();
       },
 
-      hide: function() {
+      hide: function () {
         var self = this;
 
         if (!self.model.el.is(':visible')) return;
@@ -515,7 +523,7 @@
       },
 
       // Parse variables in the template
-      replaceVariables: function(template, variables) {
+      replaceVariables: function (template, variables) {
         var formattedString;
 
         for (var key in variables) {
@@ -529,7 +537,7 @@
       },
 
       // Get data fragment
-      getDataFragment: function(number) {
+      getDataFragment: function (number) {
         var pageSize = attributes.pageSize;
         var dataSource = attributes.dataSource;
         var totalNumber = this.getTotalNumber();
@@ -541,17 +549,17 @@
       },
 
       // Get total number
-      getTotalNumber: function() {
+      getTotalNumber: function () {
         return this.model.totalNumber || attributes.totalNumber || 0;
       },
 
       // Get total page
-      getTotalPage: function() {
+      getTotalPage: function () {
         return Math.ceil(this.getTotalNumber() / attributes.pageSize);
       },
 
       // Get locator
-      getLocator: function(locator) {
+      getLocator: function (locator) {
         var result;
 
         if (typeof locator === 'string') {
@@ -566,14 +574,14 @@
       },
 
       // Filter data by "locator"
-      filterDataByLocator: function(dataSource) {
+      filterDataByLocator: function (dataSource) {
         var locator = this.getLocator(attributes.locator);
         var filteredData;
 
         // Datasource is an Object, use "locator" to locate the true data
         if (Helpers.isObject(dataSource)) {
           try {
-            $.each(locator.split('.'), function(index, item) {
+            $.each(locator.split('.'), function (index, item) {
               filteredData = (filteredData ? filteredData : dataSource)[item];
             });
           }
@@ -591,18 +599,20 @@
       },
 
       // Parse dataSource
-      parseDataSource: function(dataSource, callback) {
+      parseDataSource: function (dataSource, callback) {
         var self = this;
 
         if (Helpers.isObject(dataSource)) {
-          callback(attributes.dataSource = self.filterDataByLocator(dataSource));
+          // callback(attributes.dataSource = self.filterDataByLocator(dataSource));
+          callback(self.filterDataByLocator(dataSource)); // Do not change the dataSource
         } else if (Helpers.isArray(dataSource)) {
           callback(attributes.dataSource = dataSource);
         } else if ($.isFunction(dataSource)) {
-          attributes.dataSource(function(data) {
-            if (!Helpers.isArray(data)) {
-              throwError('The parameter of "done" Function should be an Array.');
-            }
+          // Get data for first page
+          attributes.dataSource(1, attributes.pageSize, function (data) {
+            // if (!Helpers.isArray(data)) {
+            //   throwError('The parameter of "done" Function should be an Array.');
+            // }
             self.parseDataSource.call(self, data, callback);
           });
         } else if (typeof dataSource === 'string') {
@@ -615,7 +625,7 @@
         }
       },
 
-      callHook: function(hook) {
+      callHook: function (hook) {
         var paginationData = container.data('pagination');
         var result;
 
@@ -629,7 +639,7 @@
         }
 
         if (paginationData.hooks && paginationData.hooks[hook]) {
-          $.each(paginationData.hooks[hook], function(index, item) {
+          $.each(paginationData.hooks[hook], function (index, item) {
             if (item.apply(global, args) === false) {
               result = false;
             }
@@ -639,12 +649,12 @@
         return result !== false;
       },
 
-      observer: function() {
+      observer: function () {
         var self = this;
         var el = self.model.el;
 
         // Go to specified page number
-        container.on(eventPrefix + 'go', function(event, pageNumber, done) {
+        container.on(eventPrefix + 'go', function (event, pageNumber, done) {
           pageNumber = parseInt($.trim(pageNumber));
 
           if (!pageNumber) return;
@@ -657,7 +667,7 @@
         });
 
         // Page number button click
-        el.delegate('.J-paginationjs-page', 'click', function(event) {
+        el.delegate('.J-paginationjs-page', 'click', function (event) {
           var current = $(event.currentTarget);
           var pageNumber = $.trim(current.attr('data-num'));
 
@@ -675,7 +685,7 @@
         });
 
         // Previous button click
-        el.delegate('.J-paginationjs-previous', 'click', function(event) {
+        el.delegate('.J-paginationjs-previous', 'click', function (event) {
           var current = $(event.currentTarget);
           var pageNumber = $.trim(current.attr('data-num'));
 
@@ -693,7 +703,7 @@
         });
 
         // Next button click
-        el.delegate('.J-paginationjs-next', 'click', function(event) {
+        el.delegate('.J-paginationjs-next', 'click', function (event) {
           var current = $(event.currentTarget);
           var pageNumber = $.trim(current.attr('data-num'));
 
@@ -711,7 +721,7 @@
         });
 
         // Go button click
-        el.delegate('.J-paginationjs-go-button', 'click', function(event) {
+        el.delegate('.J-paginationjs-go-button', 'click', function (event) {
           var pageNumber = $('.J-paginationjs-go-pagenumber', el).val();
 
           // Before Go button clicked
@@ -724,7 +734,7 @@
         });
 
         // go input enter
-        el.delegate('.J-paginationjs-go-pagenumber', 'keyup', function(event) {
+        el.delegate('.J-paginationjs-go-pagenumber', 'keyup', function (event) {
           if (event.which === 13) {
             var pageNumber = $(event.currentTarget).val();
 
@@ -742,42 +752,42 @@
         });
 
         // Previous page
-        container.on(eventPrefix + 'previous', function(event, done) {
+        container.on(eventPrefix + 'previous', function (event, done) {
           self.previous(done);
         });
 
         // Next page
-        container.on(eventPrefix + 'next', function(event, done) {
+        container.on(eventPrefix + 'next', function (event, done) {
           self.next(done);
         });
 
         // Disable
-        container.on(eventPrefix + 'disable', function() {
+        container.on(eventPrefix + 'disable', function () {
           self.disable();
         });
 
         // Enable
-        container.on(eventPrefix + 'enable', function() {
+        container.on(eventPrefix + 'enable', function () {
           self.enable();
         });
 
         // Refresh
-        container.on(eventPrefix + 'refresh', function(event, done) {
+        container.on(eventPrefix + 'refresh', function (event, done) {
           self.refresh(done);
         });
 
         // Show
-        container.on(eventPrefix + 'show', function() {
+        container.on(eventPrefix + 'show', function () {
           self.show();
         });
 
         // Hide
-        container.on(eventPrefix + 'hide', function() {
+        container.on(eventPrefix + 'hide', function () {
           self.hide();
         });
 
         // Destroy
-        container.on(eventPrefix + 'destroy', function() {
+        container.on(eventPrefix + 'destroy', function () {
           self.destroy();
         });
 
@@ -960,11 +970,11 @@
     showLastOnEllipsisShow: true,
 
     // Pagination callback
-    callback: function() {}
+    callback: function () { }
   };
 
   // Hook register
-  $.fn[pluginHookMethod] = function(hook, callback) {
+  $.fn[pluginHookMethod] = function (hook, callback) {
     if (arguments.length < 2) {
       throwError('Missing argument.');
     }
@@ -990,7 +1000,7 @@
   };
 
   // Static method
-  $[pluginName] = function(selector, options) {
+  $[pluginName] = function (selector, options) {
     if (arguments.length < 2) {
       throwError('Requires two parameters.');
     }
@@ -1058,7 +1068,7 @@
     var events = ['go', 'previous', 'next', 'disable', 'enable', 'refresh', 'show', 'hide', 'destroy'];
 
     // off events of old instance
-    $.each(events, function(index, value) {
+    $.each(events, function (index, value) {
       target.off(eventPrefix + value);
     });
 
@@ -1071,11 +1081,11 @@
 
   // Object type detection
   function getObjectType(object, tmp) {
-    return ( (tmp = typeof(object)) == "object" ? object == null && "null" || Object.prototype.toString.call(object).slice(8, -1) : tmp ).toLowerCase();
+    return ((tmp = typeof (object)) == "object" ? object == null && "null" || Object.prototype.toString.call(object).slice(8, -1) : tmp).toLowerCase();
   }
 
-  $.each(['Object', 'Array', 'String'], function(index, name) {
-    Helpers['is' + name] = function(object) {
+  $.each(['Object', 'Array', 'String'], function (index, name) {
+    Helpers['is' + name] = function (object) {
       return getObjectType(object) === name.toLowerCase();
     };
   });
@@ -1084,7 +1094,7 @@
    * export via AMD or CommonJS
    * */
   if (typeof define === 'function' && define.amd) {
-    define(function() {
+    define(function () {
       return $;
     });
   }
