@@ -1,5 +1,5 @@
 /*
- * pagination.js 3.1.3
+ * pagination.js 3.1.4
  * A jQuery plugin to provide simple yet fully customisable pagination.
  * https://github.com/superRaytin/paginationjs
  *
@@ -608,13 +608,17 @@
         } else if (Helpers.isArray(dataSource)) {
           callback(attributes.dataSource = dataSource);
         } else if ($.isFunction(dataSource)) {
-          // Get data for first page
-          attributes.dataSource(1, attributes.pageSize, function (data) {
-            // if (!Helpers.isArray(data)) {
-            //   throwError('The parameter of "done" Function should be an Array.');
-            // }
-            self.parseDataSource.call(self, data, callback);
-          });
+          if (attributes.isAsync) {
+            callback(); // The dataSource is an async function, so reduce the excution time
+          } else {
+            // Get data for first page
+            attributes.dataSource(1, attributes.pageSize, function (data) {
+              // if (!Helpers.isArray(data)) {
+              //   throwError('The parameter of "done" Function should be an Array.');
+              // }
+              self.parseDataSource.call(self, data, callback);
+            });
+          }
         } else if (typeof dataSource === 'string') {
           if (/^https?|file:/.test(dataSource)) {
             attributes.ajaxDataType = 'jsonp';
